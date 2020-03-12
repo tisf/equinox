@@ -3,6 +3,7 @@
 open Equinox
 open Equinox.Core
 open EventStore.Client
+open EventStore.Client
 open Serilog
 open System
 
@@ -26,14 +27,14 @@ module Log =
     let propEventData name (events : EventData[]) (log : ILogger) =
         log |> propEvents name (seq {
             for x in events do
-                if x.IsJson then
+                if x.ContentType = "application/json" then
                     yield System.Collections.Generic.KeyValuePair<_,_>(x.Type, System.Text.Encoding.UTF8.GetString x.Data) })
 
     let propResolvedEvents name (events : ResolvedEvent[]) (log : ILogger) =
         log |> propEvents name (seq {
             for x in events do
                 let e = x.Event
-                if e.IsJson then
+                if e.ContentType = "application/json" then
                     yield System.Collections.Generic.KeyValuePair<_,_>(e.EventType, System.Text.Encoding.UTF8.GetString e.Data) })
 
     open Serilog.Events
@@ -137,7 +138,7 @@ module private Write =
     let private writeEventsAsync (log : ILogger) (conn : EventStoreClient) (streamName : string) (version : int64) (events : EventData[])
         : Async<EsSyncResult> = async {
         try let! ct = Async.CancellationToken
-            let! wr = conn.AppendToStreamAsync(streamName, StreamRevision.FromInt64 version, events, cancellationToken=ct) |> Async.AwaitTaskCorrect
+            let! wr = conn.AppendToStreamAsync(streamName, StreamRevision.op_Implicit(uint64 version), events, cancellationToken=ct) |> Async.AwaitTaskCorrect
             return EsSyncResult.Written wr
         with :? EventStore.Client.WrongExpectedVersionException as ex ->
             log.Information(ex, "Ges TrySync WrongExpectedVersionException writing {EventTypes}, actual {ActualVersion}",
