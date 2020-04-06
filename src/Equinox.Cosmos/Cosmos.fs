@@ -617,14 +617,15 @@ module internal Tip =
     open FSharp.Control
     let private mkQuery (container : Container, stream : string) maxItems (direction: Direction) startPos =
         let query =
-            let root = sprintf "SELECT c.id, c.i, c._etag, c.n, c.e FROM c WHERE c.id!=\"%s\"" Tip.WellKnownDocumentId
+            let root = "SELECT c.id, c.i, c._etag, c.n, c.e FROM c WHERE"
+            let notTip = sprintf "c.id!=\"%s\"" Tip.WellKnownDocumentId
             let tail = sprintf "ORDER BY c.i %s" (if direction = Direction.Forward then "ASC" else "DESC")
             match startPos with
-            | None -> SqlQuerySpec(sprintf "%s %s" root tail)
+            | None -> SqlQuerySpec(sprintf "%s %s %s " root notTip tail)
             | Some { index = positionSoExclusiveWhenBackward } ->
                 let cond = if direction = Direction.Forward then "c.n > @startPos" else "c.i < @startPos"
-                SqlQuerySpec(sprintf "%s AND %s %s" root cond tail, SqlParameterCollection [SqlParameter("@startPos", positionSoExclusiveWhenBackward)])
-        let qro = new Client.FeedOptions(PartitionKey = PartitionKey stream, MaxItemCount=Nullable maxItems)
+                SqlQuerySpec(sprintf "%s %s AND %s %s" root cond notTip tail, SqlParameterCollection [SqlParameter("@startPos", positionSoExclusiveWhenBackward)])
+        let qro = Client.FeedOptions(PartitionKey = PartitionKey stream, MaxItemCount=Nullable maxItems)
         container.Client.CreateDocumentQuery<Batch>(container.CollectionUri, query, qro).AsDocumentQuery()
 
     // Unrolls the Batches in a response - note when reading backwards, the events are emitted in reverse order of index
