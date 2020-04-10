@@ -122,12 +122,11 @@ module Store =
     let factory = CosmosStoreClientFactory(TimeSpan.FromSeconds 5., 2, TimeSpan.FromSeconds 5.)
     let cosmosClient = factory.Create(Discovery.ConnectionString (read "EQUINOX_COSMOS_CONNECTION"))
     let client = CosmosStoreClient(cosmosClient, read "EQUINOX_COSMOS_DATABASE", read "EQUINOX_COSMOS_CONTAINER")
-    let context = CosmosStoreContext(client)
     let cacheStrategy = CachingStrategy.SlidingWindow (cache, TimeSpan.FromMinutes 20.)
 
 module TodosCategory = 
     let access = AccessStrategy.Snapshot (isOrigin,snapshot)
-    let category = CosmosStoreCategory(Store.context, codec, fold, initial, Store.cacheStrategy, access=access)
+    let category = CosmosStoreCategory(Store.client, codec, fold, initial, Store.cacheStrategy, access=access)
     let resolve id = Equinox.Stream(log, category.Resolve(streamName id), maxAttempts = 3)
 
 let service = Service(TodosCategory.resolve)

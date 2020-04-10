@@ -6,6 +6,7 @@
 #r "Equinox.Core.dll"
 #r "FSharp.UMX.dll"
 #r "FSCodec.dll"
+#r "FsCodec.NewtonsoftJson.dll"
 #r "FsCodec.SystemTextJson.dll"
 #r "Azure.Cosmos.dll"
 #r "System.Net.Http"
@@ -126,13 +127,12 @@ module Store =
     let factory = CosmosStoreClientFactory(TimeSpan.FromSeconds 5., 2, TimeSpan.FromSeconds 5., mode=Azure.Cosmos.ConnectionMode.Gateway)
     let cosmosClient = factory.Create(Discovery.ConnectionString (read "EQUINOX_COSMOS_CONNECTION"))
     let client = CosmosStoreClient(cosmosClient, read "EQUINOX_COSMOS_DATABASE", read "EQUINOX_COSMOS_CONTAINER")
-    let context = CosmosStoreContext(client)
     let cache = Equinox.Cache(appName, 20)
     let cacheStrategy = CachingStrategy.SlidingWindow (cache, TimeSpan.FromMinutes 20.) // OR CachingStrategy.NoCaching
 
 open FulfilmentCenter
 
-let category = CosmosStoreCategory(Store.context, Events.codec, Fold.fold, Fold.initial, Store.cacheStrategy, AccessStrategy.Unoptimized)
+let category = CosmosStoreCategory(Store.client, Events.codec, Fold.fold, Fold.initial, Store.cacheStrategy, AccessStrategy.Unoptimized)
 let resolve id = Equinox.Stream(Log.log, category.Resolve(streamName id), maxAttempts = 3)
 let service = Service(resolve)
 

@@ -1095,6 +1095,17 @@ type CosmosStoreCategory<'event, 'state, 'context>(context : CosmosStoreContext,
             let containerClient, streamId, init = context.ResolveContainerClientAndStreamIdAndInit(categoryName, streamId)
             categoryName, containerClient, streamId, init
 
+    // Shortcut to avoid having to create a CosmosStoreContext separately
+    new (   client : CosmosStoreClient,
+            codec : FsCodec.IEventCodec<'event, System.Text.Json.JsonElement, 'context>,
+            fold : 'state -> 'event seq -> 'state,
+            initial : 'state,
+            caching : CachingStrategy,
+            access : AccessStrategy<'event, 'state>,
+            ?defaultMaxItems, ?getDefaultMaxItems, ?maxRequests, ?readRetryPolicy, ?writeRetryPolicy) =
+        let context = CosmosStoreContext(client, ?defaultMaxItems = defaultMaxItems, ?getDefaultMaxItems = getDefaultMaxItems, ?maxRequests = maxRequests, ?readRetryPolicy = readRetryPolicy, ?writeRetryPolicy = writeRetryPolicy)
+        CosmosStoreCategory(context, codec, fold, initial, caching, access)
+
     member __.Resolve
         (   streamName : StreamName,
             /// Resolver options
